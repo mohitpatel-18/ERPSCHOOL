@@ -61,10 +61,13 @@ export const adminService = {
 
   /* ================= LEAVES ================= */
 
-  getAllLeaves: () => api.get("/leaves"),
+  getAllLeaves: (params) => api.get("/leaves", { params }),
 
   updateLeaveStatus: (id, data) =>
     api.put(`/leaves/${id}/status`, data),
+
+  getLeaveAnalytics: (params) =>
+    api.get("/leaves/analytics", { params }),
 
   /* ================= FEE MANAGEMENT ================= */
 

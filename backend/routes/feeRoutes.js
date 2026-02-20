@@ -1,51 +1,94 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth');
+const { authorize } = require('../middleware/roleCheck');
 
 const {
-  createFeeStructure,
-  generateMonthlyLedger,
-  getStudentLedger,
-  recordManualPayment,
-  applyLateFine,
-  getClassCollectionReport,
-  getAdminFeeSummary,
-  getFeeTrend,
-  getRecentPayments,
-} = require("../controllers/feeController");
+  // Fee Template
+  createFeeTemplate,
+  getAllFeeTemplates,
+  getFeeTemplate,
+  updateFeeTemplate,
+  deleteFeeTemplate,
+  
+  // Student Fee
+  assignFeeToStudent,
+  bulkAssignFee,
+  assignFeeToClass,
+  getAllStudentFees,
+  getStudentFee,
+  updateStudentFee,
+  
+  // Payment
+  recordPayment,
+  getAllPayments,
+  getPayment,
+  approvePayment,
+  rejectPayment,
+  
+  // Discount & Concession
+  applyDiscount,
+  waiveFee,
+  
+  // Reports & Analytics
+  getCollectionSummary,
+  getOverdueStudents,
+  getDefaulters,
+  generateFeeReport,
+  getDailyCollection,
+  getCollectorSummary,
+  calculateLateFees,
+  sendFeeReminders,
+} = require('../controllers/feeController');
 
-const { protect } = require("../middleware/auth");
-const { authorize } = require("../middleware/roleCheck");
+/* ================= FEE TEMPLATE ROUTES ================= */
+router.route('/templates')
+  .get(protect, authorize('admin'), getAllFeeTemplates)
+  .post(protect, authorize('admin'), createFeeTemplate);
 
-router.use(protect);
+router.route('/templates/:id')
+  .get(protect, authorize('admin'), getFeeTemplate)
+  .put(protect, authorize('admin'), updateFeeTemplate)
+  .delete(protect, authorize('admin'), deleteFeeTemplate);
 
-/* ================= ADMIN ROUTES ================= */
+/* ================= STUDENT FEE ASSIGNMENT ================= */
+router.post('/assign', protect, authorize('admin'), assignFeeToStudent);
+router.post('/assign/bulk', protect, authorize('admin'), bulkAssignFee);
+router.post('/assign/class', protect, authorize('admin'), assignFeeToClass);
 
-// 🏗 Create Fee Structure
-router.post("/structure", authorize("admin"), createFeeStructure);
+/* ================= STUDENT FEE MANAGEMENT ================= */
+router.route('/student-fees')
+  .get(protect, authorize('admin'), getAllStudentFees);
 
-// 📅 Generate Monthly Ledger
-router.post("/generate", authorize("admin"), generateMonthlyLedger);
+router.route('/student-fees/:id')
+  .get(protect, authorize('admin', 'student'), getStudentFee)
+  .put(protect, authorize('admin'), updateStudentFee);
 
-// ⏰ Apply Late Fine
-router.post("/late-fine", authorize("admin"), applyLateFine);
+/* ================= PAYMENT ROUTES ================= */
+router.route('/payments')
+  .get(protect, authorize('admin'), getAllPayments)
+  .post(protect, authorize('admin'), recordPayment);
 
-// 💰 Manual Payment
-router.post("/pay/:ledgerId", authorize("admin"), recordManualPayment);
+router.route('/payments/:id')
+  .get(protect, authorize('admin'), getPayment);
 
-// 📊 Class Collection Report
-router.get("/report/:classId", authorize("admin"), getClassCollectionReport);
+router.put('/payments/:id/approve', protect, authorize('admin'), approvePayment);
+router.put('/payments/:id/reject', protect, authorize('admin'), rejectPayment);
 
-// 📊 Dashboard Summary
-router.get("/admin/summary", authorize("admin"), getAdminFeeSummary);
+/* ================= DISCOUNT & CONCESSION ================= */
+router.post('/discount', protect, authorize('admin'), applyDiscount);
+router.post('/waive', protect, authorize('admin'), waiveFee);
 
-// 📈 Collection Trend
-router.get("/admin/trend", authorize("admin"), getFeeTrend);
+/* ================= REPORTS & ANALYTICS ================= */
+router.get('/reports/summary', protect, authorize('admin'), getCollectionSummary);
+router.get('/reports/overdue', protect, authorize('admin'), getOverdueStudents);
+router.get('/reports/defaulters', protect, authorize('admin'), getDefaulters);
+router.get('/reports/full', protect, authorize('admin'), generateFeeReport);
+router.get('/reports/daily', protect, authorize('admin'), getDailyCollection);
+router.get('/reports/collectors', protect, authorize('admin'), getCollectorSummary);
 
-// 💳 Recent Payments
-router.get("/admin/recent-payments", authorize("admin"), getRecentPayments);
-
-/* ================= STUDENT ROUTES ================= */
-
-router.get("/student/:studentId", authorize("student", "admin"), getStudentLedger);
+/* ================= UTILITIES ================= */
+router.post('/calculate-late-fees', protect, authorize('admin'), calculateLateFees);
+router.post('/send-reminders', protect, authorize('admin'), sendFeeReminders);
 
 module.exports = router;

@@ -6,17 +6,20 @@ const {
   getMyLeaves,
   getAllLeaves,
   updateLeaveStatus,
+  cancelLeave,
+  getLeaveBalance,
+  getLeaveAnalytics,
 } = require("../controllers/leaveController");
 
 const { protect } = require("../middleware/auth");
 const { authorize } = require("../middleware/roleCheck");
 const upload = require("../middleware/upload");
 
-/* ================= TEACHER ================= */
+/* ================= TEACHER & STUDENT ================= */
 router.post(
   "/apply",
   protect,
-  authorize("teacher"),
+  authorize("teacher", "student"),
   upload.single("attachment"),
   applyLeave
 );
@@ -24,8 +27,22 @@ router.post(
 router.get(
   "/my",
   protect,
-  authorize("teacher"),
+  authorize("teacher", "student"),
   getMyLeaves
+);
+
+router.get(
+  "/balance",
+  protect,
+  authorize("teacher", "student"),
+  getLeaveBalance
+);
+
+router.put(
+  "/:id/cancel",
+  protect,
+  authorize("teacher", "student"),
+  cancelLeave
 );
 
 /* ================= ADMIN ================= */
@@ -34,6 +51,13 @@ router.get(
   protect,
   authorize("admin"),
   getAllLeaves
+);
+
+router.get(
+  "/analytics",
+  protect,
+  authorize("admin"),
+  getLeaveAnalytics
 );
 
 router.put(

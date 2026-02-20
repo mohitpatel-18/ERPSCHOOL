@@ -91,4 +91,8 @@ attendanceSchema.index({ class: 1, date: 1 });
 // Fast student attendance history queries
 attendanceSchema.index({ student: 1, createdAt: -1 });
 
+// Performance optimization for 1000+ students
+attendanceSchema.index({ date: 1, status: 1 }); // For daily reports
+attendanceSchema.index({ class: 1, date: 1, status: 1 }); // For class-wise reports
+
 module.exports = mongoose.model('Attendance', attendanceSchema);

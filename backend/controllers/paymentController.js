@@ -1,30 +1,31 @@
 const crypto = require("crypto");
 const razorpay = require("../config/razorpay");
-const StudentFeeLedger = require("../models/StudentFeeLedger");
+const StudentFee = require("../models/StudentFee");
+const Payment = require("../models/Payment");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
 /* =====================================================
-   1️⃣ CREATE ORDER (RAZORPAY)
+   1️⃣ CREATE ORDER (RAZORPAY) - Updated for new system
 ===================================================== */
 exports.createPaymentOrder = async (req, res, next) => {
   try {
-    const { ledgerId } = req.body;
+    const { studentFeeId, amount } = req.body;
 
-    const ledger = await StudentFeeLedger.findById(ledgerId);
+    const studentFee = await StudentFee.findById(studentFeeId);
 
-    if (!ledger) {
+    if (!studentFee) {
       return res.status(404).json({
         success: false,
-        message: "Ledger not found",
+        message: "Student fee not found",
       });
     }
 
     const options = {
-      amount: ledger.balance * 100,
+      amount: amount * 100,
       currency: "INR",
-      receipt: `receipt_${ledger._id}`,
+      receipt: `receipt_${studentFee._id}_${Date.now()}`,
     };
 
     const order = await razorpay.orders.create(options);
@@ -67,34 +68,12 @@ exports.verifyPayment = async (req, res, next) => {
       });
     }
 
-    const ledger = await StudentFeeLedger.findById(ledgerId)
-      .populate({
-        path: "student",
-        populate: { path: "userId", select: "name" },
-      })
-      .populate("class");
-
-    if (!ledger) {
-      return res.status(404).json({
-        success: false,
-        message: "Ledger not found",
-      });
-    }
-
-    /* ===== Update Ledger ===== */
-    ledger.paidAmount += ledger.balance;
-    ledger.balance = 0;
-    ledger.status = "paid";
-    ledger.paymentHistory.push({
-      amount: ledger.paidAmount,
-      method: "online",
-      transactionId: razorpay_payment_id,
+    // This is now handled by razorpayController.js
+    // For backward compatibility, redirect
+    res.status(410).json({
+      success: false,
+      message: "This endpoint is deprecated. Use /api/fees/payments/razorpay/verify instead",
     });
-
-    ledger.receiptNumber = `RCPT-${Date.now()}`;
-    ledger.paidDate = new Date();
-
-    await ledger.save();
 
     /* ===== Generate Receipt PDF ===== */
     const receiptDir = path.join(__dirname, "../receipts");
@@ -134,49 +113,15 @@ exports.verifyPayment = async (req, res, next) => {
 };
 
 /* =====================================================
-   3️⃣ DIRECT PAYMENT (CASH / ADMIN ENTRY)
+   3️⃣ DIRECT PAYMENT (CASH / ADMIN ENTRY) - Updated
 ===================================================== */
 exports.payFee = async (req, res, next) => {
   try {
-    const { ledgerId, amount, method } = req.body;
-
-    const ledger = await StudentFeeLedger.findById(ledgerId);
-
-    if (!ledger) {
-      return res.status(404).json({
-        success: false,
-        message: "Ledger not found",
-      });
-    }
-
-    if (amount > ledger.balance) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount exceeds balance",
-      });
-    }
-
-    ledger.paidAmount += amount;
-    ledger.balance -= amount;
-
-    ledger.paymentHistory.push({
-      amount,
-      method,
-      transactionId: `OFFLINE-${Date.now()}`,
-    });
-
-    if (ledger.balance === 0) {
-      ledger.status = "paid";
-    } else {
-      ledger.status = "partial";
-    }
-
-    await ledger.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Payment recorded successfully",
-      data: ledger,
+    // This is now handled by feeController.js recordPayment
+    // Redirect to new endpoint
+    res.status(410).json({
+      success: false,
+      message: "This endpoint is deprecated. Use /api/fees/payments instead",
     });
   } catch (error) {
     next(error);

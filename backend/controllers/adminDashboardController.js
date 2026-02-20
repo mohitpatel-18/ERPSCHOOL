@@ -31,13 +31,15 @@ exports.getDashboardStats = async (req, res) => {
     const recentTeachers = await Teacher.find()
       .populate('userId', 'name email')
       .sort({ createdAt: -1 })
-      .limit(5);
+      .limit(5)
+      .lean();
 
     const recentStudents = await Student.find()
       .populate('userId', 'name email')
       .populate('class', 'name section')
       .sort({ createdAt: -1 })
-      .limit(5);
+      .limit(5)
+      .lean();
 
     res.json({
       success: true,

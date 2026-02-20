@@ -13,6 +13,9 @@ import {
   FaUserCircle,
   FaEye,
   FaPlus,
+  FaClipboardCheck,
+  FaBook,
+  FaEnvelopeOpenText,
 } from 'react-icons/fa';
 
 const TeacherLayout = () => {
@@ -25,22 +28,25 @@ const TeacherLayout = () => {
 
   // ✅ TEACHER MENU
   const menuItems = [
-    { name: 'Dashboard', path: '/teacher', icon: <FaTachometerAlt /> },
-    { name: 'Add Student', path: '/teacher/add-student', icon: <FaPlus /> },
-    { name: 'My Students', path: '/teacher/students', icon: <FaUsers /> },
+    { name: 'Dashboard', path: '/teacher', icon: <FaTachometerAlt />, group: 'Main' },
+    { name: 'Add Student', path: '/teacher/add-student', icon: <FaPlus />, group: 'Students' },
+    { name: 'My Students', path: '/teacher/students', icon: <FaUsers />, group: 'Students' },
     {
       name: 'Mark Attendance',
       path: '/teacher/attendance/mark',
       icon: <FaClipboardList />,
+      group: 'Attendance',
     },
     {
       name: 'View Attendance',
       path: '/teacher/attendance/view',
       icon: <FaEye />,
+      group: 'Attendance',
     },
-    { name: 'Apply Leave', path: '/teacher/apply-leave', icon: <FaClipboardList /> },
-    { name: 'My Leaves', path: '/teacher/my-leaves', icon: <FaClipboardList /> },
-    { name: 'Profile', path: '/teacher/profile', icon: <FaUserCircle /> },
+    { name: 'Exam Management', path: '/teacher/exams', icon: <FaClipboardCheck />, group: 'Academics' },
+    { name: 'Homework', path: '/teacher/homework', icon: <FaBook />, group: 'Academics' },
+    { name: 'Leave Management', path: '/teacher/leaves', icon: <FaEnvelopeOpenText />, group: 'Leave' },
+    { name: 'Profile', path: '/teacher/profile', icon: <FaUserCircle />, group: 'Settings' },
   ];
 
   const handleLogout = async () => {

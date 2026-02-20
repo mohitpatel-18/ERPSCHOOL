@@ -8,7 +8,7 @@ const User = require('../models/User');
    HELPER
 ===================================================== */
 const getActiveTeacher = async (userId) => {
-  const teacher = await Teacher.findOne({ userId }).populate('classes');
+  const teacher = await Teacher.findOne({ userId }).populate('assignedClasses');
   if (!teacher) return { error: 'Teacher not found' };
   if (teacher.status && teacher.status !== 'active') {
     return { error: 'Teacher account is inactive' };
@@ -26,7 +26,7 @@ exports.getTeacherDashboard = async (req, res, next) => {
       return res.status(403).json({ success: false, message: error });
     }
 
-    const classIds = teacher.classes.map((c) => c._id);
+    const classIds = teacher.assignedClasses.map((c) => c._id);
 
     const totalStudents = await Student.countDocuments({
       class: { $in: classIds },
@@ -46,7 +46,7 @@ exports.getTeacherDashboard = async (req, res, next) => {
     ];
 
     const pendingAttendance =
-      teacher.classes.length - markedClassIds.length;
+      teacher.assignedClasses.length - markedClassIds.length;
 
     const absentToday = todayAttendance.filter(
       (a) => a.status === 'absent'
@@ -83,7 +83,7 @@ exports.getTeacherDashboard = async (req, res, next) => {
       data: {
         teacher,
         stats: {
-          totalClasses: teacher.classes.length,
+          totalClasses: teacher.assignedClasses.length,
           totalStudents,
           attendanceMarkedToday: markedClassIds.length,
           pendingAttendance,
@@ -234,7 +234,7 @@ exports.getStudentsByClass = async (req, res, next) => {
 
     const classId = req.params.classId;
 
-    if (!teacher.classes.some((c) => c._id.toString() === classId)) {
+    if (!teacher.assignedClasses.some((c) => c._id.toString() === classId)) {
       return res.status(403).json({
         success: false,
         message: 'Not assigned to this class',
@@ -290,8 +290,8 @@ exports.teacherAddStudent = async (req, res, next) => {
     }
 
     // ✅ OPTIONAL: If teacher has assigned classes, validate them
-    if (teacher.classes.length > 0) {
-      const isAssigned = teacher.classes.some(
+    if (teacher.assignedClasses.length > 0) {
+      const isAssigned = teacher.assignedClasses.some(
         (c) => c._id.toString() === classId
       );
 
@@ -380,7 +380,7 @@ exports.getAttendanceByClass = async (req, res, next) => {
 
     const classId = req.params.classId;
 
-    if (!teacher.classes.some((c) => c._id.toString() === classId)) {
+    if (!teacher.assignedClasses.some((c) => c._id.toString() === classId)) {
       return res.status(403).json({
         success: false,
         message: 'Not assigned to this class',
@@ -422,7 +422,7 @@ exports.getTeacherProfile = async (req, res, next) => {
       userId: req.user.id,
     })
       .populate('userId', 'name email phone role lastLogin')
-      .populate('classes', 'name section');
+      .populate('assignedClasses', 'name section');
 
     if (!teacher) {
       return res.status(404).json({
@@ -449,7 +449,7 @@ exports.getWeakStudents = async (req, res, next) => {
     if (error)
       return res.status(403).json({ success: false, message: error });
 
-    const classIds = teacher.classes.map((c) => c._id);
+    const classIds = teacher.assignedClasses.map((c) => c._id);
 
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);

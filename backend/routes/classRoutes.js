@@ -18,6 +18,10 @@ router.route('/')
   .get(getAllClasses)
   .post(authorize('admin'), createClass);
 
+// Special route for /all - must come before /:id to avoid conflict
+router.route('/all')
+  .get(getAllClasses);
+
 router.route('/:id')
   .get(getClass)
   .put(authorize('admin'), updateClass)

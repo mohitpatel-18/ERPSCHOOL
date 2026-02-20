@@ -204,13 +204,13 @@ const TeacherDashboard = () => {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h2 className="text-xl font-bold mb-4">My Classes</h2>
 
-        {dashboard?.teacher?.classes?.length === 0 ? (
+        {!dashboard?.teacher?.assignedClasses || dashboard.teacher.assignedClasses.length === 0 ? (
           <p className="text-center text-gray-500 py-8">
             No classes assigned yet
           </p>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dashboard.teacher.classes.map(cls => (
+            {dashboard.teacher.assignedClasses?.map(cls => (
               <div
                 key={cls._id}
                 className="p-4 bg-gradient-to-br from-primary-50 to-secondary-50 rounded-lg"

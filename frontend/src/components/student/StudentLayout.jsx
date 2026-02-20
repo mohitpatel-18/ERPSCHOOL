@@ -11,6 +11,9 @@ import {
   FaClipboardList,
   FaSignOutAlt,
   FaUserGraduate,
+  FaMoneyBillWave,
+  FaClipboardCheck,
+  FaBook,
 } from 'react-icons/fa';
 
 const StudentLayout = () => {
@@ -23,9 +26,13 @@ const StudentLayout = () => {
 
   // ✅ STUDENT MENU
   const menuItems = [
-    { name: 'Dashboard', path: '/student', icon: <FaTachometerAlt /> },
-    { name: 'My Profile', path: '/student/profile', icon: <FaUserGraduate /> },
-    { name: 'Attendance', path: '/student/attendance', icon: <FaClipboardList /> },
+    { name: 'Dashboard', path: '/student', icon: <FaTachometerAlt />, group: 'Main' },
+    { name: 'My Profile', path: '/student/profile', icon: <FaUserGraduate />, group: 'Profile' },
+    { name: 'Attendance', path: '/student/attendance', icon: <FaClipboardList />, group: 'Academics' },
+    { name: 'Exams & Results', path: '/student/exams', icon: <FaClipboardCheck />, group: 'Academics' },
+    { name: 'Homework', path: '/student/homework', icon: <FaBook />, group: 'Academics' },
+    { name: 'Leave Management', path: '/student/leaves', icon: <FaClipboardList />, group: 'Leave' },
+    { name: 'My Fees', path: '/student/fees', icon: <FaMoneyBillWave />, group: 'Finance' },
   ];
 
   const handleLogout = async () => {

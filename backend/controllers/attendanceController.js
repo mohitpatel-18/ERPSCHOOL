@@ -9,7 +9,8 @@ exports.getStudentDashboard = async (req, res, next) => {
   try {
     const student = await Student.findOne({ userId: req.user.id })
       .populate("userId", "name email phone avatar")
-      .populate("class", "name section");
+      .populate("class", "name section")
+      .lean();
 
     if (!student) {
       return res.status(404).json({

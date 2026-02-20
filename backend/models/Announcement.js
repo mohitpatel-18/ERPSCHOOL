@@ -46,10 +46,11 @@ const announcementSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-/* ================= INDEXING (Performance Boost) ================= */
-announcementSchema.index({ target: 1 });
-announcementSchema.index({ expiryDate: 1 });
-announcementSchema.index({ isActive: 1 });
+/* ================= INDEXES (Performance Boost) ================= */
+announcementSchema.index({ target: 1, isActive: 1 });
+announcementSchema.index({ expiryDate: 1, isActive: 1 });
+announcementSchema.index({ targetClass: 1, isActive: 1 });
+announcementSchema.index({ createdAt: -1 });
 
 /* ================= AUTO EXPIRE LOGIC ================= */
 announcementSchema.pre("find", function () {

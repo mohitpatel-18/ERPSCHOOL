@@ -28,26 +28,28 @@ const AdminLayout = () => {
   const navigate = useNavigate();
 
   const menuItems = [
-    { name: 'Dashboard', path: '/admin', icon: <FaTachometerAlt /> },
+    { name: 'Dashboard', path: '/admin', icon: <FaTachometerAlt />, group: 'Main' },
 
-    { name: 'Add Teacher', path: '/admin/teachers/add', icon: <FaUserPlus /> },
-    { name: 'Manage Teachers', path: '/admin/teachers', icon: <FaUsers /> },
+    { name: 'Add Teacher', path: '/admin/teachers/add', icon: <FaUserPlus />, group: 'Teachers' },
+    { name: 'Manage Teachers', path: '/admin/teachers', icon: <FaUsers />, group: 'Teachers' },
 
-    { name: 'Add Student', path: '/admin/students/add', icon: <FaUserGraduate /> },
-    { name: 'Manage Students', path: '/admin/students', icon: <FaLayerGroup /> },
+    { name: 'Add Student', path: '/admin/students/add', icon: <FaUserGraduate />, group: 'Students' },
+    { name: 'Manage Students', path: '/admin/students', icon: <FaLayerGroup />, group: 'Students' },
 
-    { name: 'Attendance Reports', path: '/admin/attendance', icon: <FaClipboardCheck /> },
-    { name: 'Manage Classes', path: '/admin/classes', icon: <FaSchool /> },
+    { name: 'Attendance Reports', path: '/admin/attendance', icon: <FaClipboardCheck />, group: 'Academics' },
+    { name: 'Manage Classes', path: '/admin/classes', icon: <FaSchool />, group: 'Academics' },
 
-    { name: 'Announcements', path: '/admin/announcements', icon: <FaBullhorn /> },
-    { name: 'Leave Requests', path: '/admin/leaves', icon: <FaEnvelopeOpenText /> },
+    { name: 'Announcements', path: '/admin/announcements', icon: <FaBullhorn />, group: 'Communication' },
+    { name: 'Leave Requests', path: '/admin/leaves', icon: <FaEnvelopeOpenText />, group: 'Communication' },
 
-    { name: 'Fee Dashboard', path: '/admin/fees', icon: <FaMoneyBillWave /> },
-    { name: 'Fee Structure', path: '/admin/fees/structure', icon: <FaFileInvoiceDollar /> },
-    { name: 'Generate Ledger', path: '/admin/fees/generate', icon: <FaFileInvoiceDollar /> },
-
-    // ✅ NEW PROFILE OPTION
-    { name: 'Profile & Settings', path: '/admin/profile', icon: <FaUserCog /> }
+    { name: 'Fee Dashboard', path: '/admin/fees', icon: <FaMoneyBillWave />, group: 'Finance' },
+    { name: 'Fee Templates', path: '/admin/fees/templates', icon: <FaFileInvoiceDollar />, group: 'Finance' },
+    { name: 'Assign Fees', path: '/admin/fees/assign', icon: <FaLayerGroup />, group: 'Finance' },
+    { name: 'Record Payment', path: '/admin/fees/payments/record', icon: <FaMoneyBillWave />, group: 'Finance' },
+    { name: 'Fee Reports', path: '/admin/fees/reports', icon: <FaFileInvoiceDollar />, group: 'Finance' },
+    
+    { name: 'Permissions', path: '/admin/permissions', icon: <FaUserCog />, group: 'Settings' },
+    { name: 'Profile & Settings', path: '/admin/profile', icon: <FaUserCircle />, group: 'Settings' }
   ];
 
   const handleLogout = async () => {

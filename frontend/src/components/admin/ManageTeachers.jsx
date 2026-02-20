@@ -39,7 +39,7 @@ const ManageTeachers = () => {
     setSelectedTeacher(teacher);
     setEditData({
       phone: teacher.userId?.phone || '',
-      classes: teacher.classes?.map(c => c._id) || [],
+      classes: teacher.assignedClasses?.map(c => c._id) || [],
       status: teacher.status,
     });
   };
@@ -75,8 +75,8 @@ const ManageTeachers = () => {
     {
       header: 'Assigned Classes',
       render: r =>
-        r.classes?.length
-          ? r.classes.map(c => `${c.name} ${c.section}`).join(', ')
+        r.assignedClasses?.length
+          ? r.assignedClasses.map(c => `${c.name} ${c.section}`).join(', ')
           : 'Not Assigned',
     },
     {

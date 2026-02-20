@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ToastProvider } from "./components/ui/Toast";
 import StudentAttendance from "./components/student/StudentAttendance";
 
 
@@ -40,26 +41,37 @@ import ViewAttendance from "./components/teacher/ViewAttendance";
 import ViewStudents from "./components/teacher/ViewStudents";
 import TeacherProfile from "./components/teacher/TeacherProfile";
 import AddStudentTeacher from "./components/teacher/AddStudent";
+import ExamManagement from "./components/teacher/ExamManagement";
+import HomeworkManagement from "./components/teacher/HomeworkManagement";
 
 /* ================= STUDENT ================= */
 import StudentLayout from "./components/student/StudentLayout";
 import StudentDashboard from "./components/student/StudentDashboard";
 import StudentProfile from "./components/student/StudentProfile";
-import StudentFees from "./components/student/StudentFees";
+import StudentExamResults from "./components/student/ExamResults";
+import StudentHomeworkManagement from "./components/student/HomeworkManagement";
+import StudentLeaveManagement from "./components/student/LeaveManagement";
 
 /* ================= LEAVE ================= */
-import ApplyLeave from "./components/teacher/ApplyLeave";
-import MyLeaves from "./components/teacher/MyLeaves";
-import LeaveRequests from "./components/admin/LeaveRequests";
+import TeacherLeaveManagement from "./components/teacher/LeaveManagement";
+import AdminLeaveManagement from "./components/admin/LeaveManagement";
 
-import FeeDashboard from "./components/admin/FeeDashboard";
-import FeeStructure from "./components/admin/FeeStructure";
-import GenerateLedger from "./components/admin/GenerateLedger";
+/* ================= ADMIN - OTHER ================= */
+import PermissionManager from "./components/admin/PermissionManager";
+
+/* ================= FEE MANAGEMENT ================= */
+import FeeDashboard from "./components/admin/fee/FeeDashboard";
+import FeeTemplateManager from "./components/admin/fee/FeeTemplateManager";
+import FeeAssignment from "./components/admin/fee/FeeAssignment";
+import PaymentRecording from "./components/admin/fee/PaymentRecording";
+import FeeReports from "./components/admin/fee/FeeReports";
+import StudentFeePortal from "./components/student/FeePortal";
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <ToastProvider>
+      <Router>
+        <Routes>
 
         {/* ========== PUBLIC ========== */}
         <Route path="/" element={<Home />} />
@@ -84,10 +96,16 @@ function App() {
             <Route path="classes" element={<ManageClasses />} />
             <Route path="attendance" element={<AttendanceReports />} />
             <Route path="announcements" element={<Announcements />} />
-            <Route path="leaves" element={<LeaveRequests />} />
+            <Route path="leaves" element={<AdminLeaveManagement />} />
+            
+            {/* Fee Management Routes */}
             <Route path="fees" element={<FeeDashboard />} />
-            <Route path="fees/structure" element={<FeeStructure />} />
-            <Route path="fees/generate" element={<GenerateLedger />} />
+            <Route path="fees/templates" element={<FeeTemplateManager />} />
+            <Route path="fees/assign" element={<FeeAssignment />} />
+            <Route path="fees/payments/record" element={<PaymentRecording />} />
+            <Route path="fees/reports" element={<FeeReports />} />
+            
+            <Route path="permissions" element={<PermissionManager />} />
             <Route path="profile" element={<AdminProfile />} />
           </Route>
         </Route>
@@ -100,9 +118,10 @@ function App() {
             <Route path="students" element={<ViewStudents />} />
             <Route path="attendance/mark" element={<MarkAttendance />} />
             <Route path="attendance/view" element={<ViewAttendance />} />
+            <Route path="exams" element={<ExamManagement />} />
+            <Route path="homework" element={<HomeworkManagement />} />
             <Route path="profile" element={<TeacherProfile />} />
-            <Route path="apply-leave" element={<ApplyLeave />} />
-            <Route path="my-leaves" element={<MyLeaves />} />
+            <Route path="leaves" element={<TeacherLeaveManagement />} />
           </Route>
         </Route>
 
@@ -112,7 +131,10 @@ function App() {
     <Route index element={<StudentDashboard />} />
     <Route path="profile" element={<StudentProfile />} />
     <Route path="attendance" element={<StudentAttendance />} />
-    <Route path="fees" element={<StudentFees />} />
+    <Route path="fees" element={<StudentFeePortal />} />
+    <Route path="exams" element={<StudentExamResults />} />
+    <Route path="homework" element={<StudentHomeworkManagement />} />
+    <Route path="leaves" element={<StudentLeaveManagement />} />
   </Route>
 </Route>
 
@@ -120,8 +142,9 @@ function App() {
         {/* ========== FALLBACK ========== */}
         <Route path="*" element={<NotFound />} />
 
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </ToastProvider>
   );
 }
 

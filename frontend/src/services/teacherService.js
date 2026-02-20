@@ -23,13 +23,18 @@ export const teacherService = {
   updateAttendance: (attendanceId, data) =>
     api.put(`/teacher/attendance/${attendanceId}`, data),
 
-  /* APPLY LEAVE */
+  /* ================= LEAVE MANAGEMENT ================= */
   applyLeave: (formData) =>
     api.post("/leaves/apply", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
-  /* MY LEAVES */
-  getMyLeaves: () =>
-    api.get("/leaves/my"),
+  getMyLeaves: (params) =>
+    api.get("/leaves/my", { params }),
+
+  getLeaveBalance: () =>
+    api.get("/leaves/balance"),
+
+  cancelLeave: (id, data) =>
+    api.put(`/leaves/${id}/cancel`, data),
 };
