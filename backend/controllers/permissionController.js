@@ -225,17 +225,49 @@ exports.bulkUpdatePermissions = asyncHandler(async (req, res) => {
     return res.status(400).json(errorResponse('Updates array is required'));
   }
   
-  const results = await Permission.bulkUpdatePermissions(updates, req.user._id);
+  console.log('📝 Bulk updating permissions:', updates.length);
+  
+  const results = [];
+  
+  // Update each permission
+  for (const update of updates) {
+    const { role, module, actions } = update;
+    
+    try {
+      const permission = await Permission.findOneAndUpdate(
+        { role, module },
+        { 
+          $set: { 
+            actions,
+            updatedAt: new Date()
+          } 
+        },
+        { new: true, upsert: false }
+      );
+      
+      if (permission) {
+        results.push(permission);
+      }
+    } catch (error) {
+      console.error(`Failed to update ${role}/${module}:`, error.message);
+    }
+  }
   
   // Log bulk update
-  await AuditLog.create({
-    action: 'BULK_UPDATE_PERMISSIONS',
-    module: 'permissions',
-    performedBy: req.user._id,
-    changes: { count: updates.length, updates },
-    ipAddress: req.ip,
-    timestamp: new Date()
-  });
+  try {
+    await AuditLog.create({
+      action: 'BULK_UPDATE_PERMISSIONS',
+      module: 'permissions',
+      performedBy: req.user._id,
+      changes: { count: updates.length, successful: results.length },
+      ipAddress: req.ip,
+      timestamp: new Date()
+    });
+  } catch (logError) {
+    console.error('Audit log failed:', logError.message);
+  }
+  
+  console.log(`✅ Updated ${results.length} of ${updates.length} permissions`);
   
   res.json(successResponse(results, `${results.length} permissions updated successfully`));
 });
@@ -378,31 +410,40 @@ exports.checkFieldPermission = asyncHandler(async (req, res) => {
  * @access  Private (Admin)
  */
 exports.getPermissionStats = asyncHandler(async (req, res) => {
-  const stats = await Permission.aggregate([
-    {
-      $facet: {
-        byRole: [
-          { $group: { _id: '$role', count: { $sum: 1 } } },
-          { $sort: { count: -1 } }
-        ],
-        byModule: [
-          { $group: { _id: '$module', count: { $sum: 1 } } },
-          { $sort: { count: -1 } }
-        ],
-        byStatus: [
-          { $group: { _id: '$status', count: { $sum: 1 } } }
-        ],
-        byScope: [
-          { $group: { _id: '$scope', count: { $sum: 1 } } }
-        ],
-        total: [
-          { $count: 'count' }
-        ]
-      }
-    }
-  ]);
+  console.log('📊 getPermissionStats called by user:', req.user?.role);
   
-  res.json(successResponse(stats[0], 'Permission statistics retrieved successfully'));
+  try {
+    const stats = await Permission.aggregate([
+      {
+        $facet: {
+          byRole: [
+            { $group: { _id: '$role', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+          ],
+          byModule: [
+            { $group: { _id: '$module', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+          ],
+          byStatus: [
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+          ],
+          byScope: [
+            { $group: { _id: '$scope', count: { $sum: 1 } } }
+          ],
+          total: [
+            { $count: 'count' }
+          ]
+        }
+      }
+    ]);
+    
+    console.log('✅ Stats retrieved successfully');
+    
+    res.json(successResponse(stats[0], 'Permission statistics retrieved successfully'));
+  } catch (error) {
+    console.error('❌ Error in getPermissionStats:', error.message);
+    throw error;
+  }
 });
 
 /**

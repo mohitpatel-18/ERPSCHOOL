@@ -6,6 +6,7 @@ const {
   applyLeave,
   getMyLeaves,
   getStudentFees,
+  submitCashPayment,
   getStudentExams,
   getStudentHomework,
   submitHomework,
@@ -62,6 +63,14 @@ router.get(
   protect,
   authorize('student'),
   getStudentFees
+);
+
+// 🔒 Submit Cash Payment Request
+router.post(
+  '/fees/cash-payment',
+  protect,
+  authorize('student'),
+  submitCashPayment
 );
 
 /* ================= EXAMS ================= */

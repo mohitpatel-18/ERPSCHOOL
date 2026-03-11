@@ -9,6 +9,7 @@ const profileController = require('../controllers/profileController');
 ===================================================== */
 router.get('/student', protect, profileController.getStudentProfile);
 router.put('/student', protect, profileController.updateStudentProfile);
+router.get('/student/stats', protect, profileController.getStudentStats);
 router.post('/student/photo', protect, uploadAvatar.single('photo'), profileController.uploadStudentPhoto);
 router.post('/student/document', protect, uploadAvatar.single('document'), profileController.addStudentDocument);
 router.post('/student/activity', protect, profileController.addStudentActivity);
@@ -18,6 +19,7 @@ router.post('/student/activity', protect, profileController.addStudentActivity);
 ===================================================== */
 router.get('/teacher', protect, profileController.getTeacherProfile);
 router.put('/teacher', protect, profileController.updateTeacherProfile);
+router.get('/teacher/stats', protect, profileController.getTeacherStats);
 router.post('/teacher/photo', protect, uploadAvatar.single('photo'), profileController.uploadTeacherPhoto);
 router.post('/teacher/certification', protect, uploadAvatar.single('certificate'), profileController.addTeacherCertification);
 router.post('/teacher/training', protect, uploadAvatar.single('certificate'), profileController.addTeacherTraining);

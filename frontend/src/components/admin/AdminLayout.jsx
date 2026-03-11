@@ -46,6 +46,7 @@ const AdminLayout = () => {
     { name: 'Fee Templates', path: '/admin/fees/templates', icon: <FaFileInvoiceDollar />, group: 'Finance' },
     { name: 'Assign Fees', path: '/admin/fees/assign', icon: <FaLayerGroup />, group: 'Finance' },
     { name: 'Record Payment', path: '/admin/fees/payments/record', icon: <FaMoneyBillWave />, group: 'Finance' },
+    { name: 'Approve Payments', path: '/admin/fees/payments/approve', icon: <FaClipboardCheck />, group: 'Finance' },
     { name: 'Fee Reports', path: '/admin/fees/reports', icon: <FaFileInvoiceDollar />, group: 'Finance' },
     
     { name: 'Permissions', path: '/admin/permissions', icon: <FaUserCog />, group: 'Settings' },

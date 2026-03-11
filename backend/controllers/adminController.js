@@ -161,12 +161,32 @@ exports.deleteTeacher = asyncHandler(async (req, res) => {
 /* ================= STUDENTS ================= */
 
 exports.addStudent = asyncHandler(async (req, res) => {
-  const { name, email, phone, classId, rollNumber } = req.body;
+  const { name, email, phone, classId, rollNumber, firstName, lastName, section } = req.body;
 
-  if (!name || !email || !classId || !rollNumber) {
+  // ✅ Support both 'name' and 'firstName/lastName' formats
+  const fName = firstName || name?.split(' ')[0] || '';
+  const lName = lastName || name?.split(' ').slice(1).join(' ') || '';
+
+  if (!email || !classId || !rollNumber) {
     return res.status(400).json({
       success: false,
-      message: 'Name, email, class and roll number are required',
+      message: 'Email, class and roll number are required',
+    });
+  }
+
+  if (!fName) {
+    return res.status(400).json({
+      success: false,
+      message: 'First name is required',
+    });
+  }
+
+  // ✅ Check if student already exists
+  const existingStudent = await Student.findOne({ email });
+  if (existingStudent) {
+    return res.status(400).json({
+      success: false,
+      message: 'Student already exists with this email',
     });
   }
 
@@ -181,7 +201,7 @@ exports.addStudent = asyncHandler(async (req, res) => {
   const studentId = generateEmployeeId('student', await Student.countDocuments());
 
   const user = await User.create({
-    name,
+    name: `${fName} ${lName}`.trim(),
     email,
     phone,
     password,
@@ -192,18 +212,27 @@ exports.addStudent = asyncHandler(async (req, res) => {
   const student = await Student.create({
     userId: user._id,
     studentId,
+    firstName: fName,
+    lastName: lName,
+    email,
+    phone: phone || '',
     class: classId,
+    section: section || 'A',
     rollNumber,
     dateOfBirth: req.body.dateOfBirth,
     gender: req.body.gender,
     bloodGroup: req.body.bloodGroup,
-    parentName: req.body.parentName,
-    parentPhone: req.body.parentPhone,
-    parentEmail: req.body.parentEmail,
+    // ✅ Handle both old and new parent field formats
+    father: {
+      name: req.body.parentName || req.body.father?.name || '',
+      phone: req.body.parentPhone || req.body.father?.phone || '',
+      email: req.body.parentEmail || req.body.father?.email || '',
+    },
     address: req.body.address,
+    status: 'active',
   });
 
-  await sendCredentialsEmail(email, name, 'student', studentId, password);
+  await sendCredentialsEmail(email, `${fName} ${lName}`, 'student', studentId, password);
 
   res.status(201).json({
     success: true,
@@ -233,15 +262,33 @@ exports.getAllStudents = asyncHandler(async (req, res) => {
     Student.find(filter)
       .populate('userId', 'name email phone')
       .populate('class', 'name section')
+      .populate('academicYear', 'year')
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
     Student.countDocuments(filter),
   ]);
 
+  // ✅ ALIGN DATA: Merge userId fields and add contactNumber for frontend compatibility
+  const alignedStudents = students.map(student => ({
+    ...student,
+    // Ensure firstName and lastName are available
+    firstName: student.firstName || student.userId?.name?.split(' ')[0] || '',
+    lastName: student.lastName || student.userId?.name?.split(' ').slice(1).join(' ') || '',
+    // Add email and phone from userId if not in student
+    email: student.email || student.userId?.email || '',
+    phone: student.phone || student.userId?.phone || '',
+    // Add contactNumber for frontend compatibility (same as phone)
+    contactNumber: student.phone || student.userId?.phone || '',
+    // Ensure status and isActive are both available
+    status: student.status || 'active',
+    isActive: student.status === 'active',
+  }));
+
   res.json({
     success: true,
-    data: students,
+    data: alignedStudents,
     pagination: {
       total,
       page,
@@ -254,26 +301,56 @@ exports.getAllStudents = asyncHandler(async (req, res) => {
 exports.getStudent = asyncHandler(async (req, res) => {
   const student = await Student.findById(req.params.id)
     .populate('userId', 'name email phone')
-    .populate('class', 'name section');
+    .populate('class', 'name section')
+    .populate('academicYear', 'year')
+    .lean();
 
   if (!student) {
     return res.status(404).json({ success: false, message: 'Student not found' });
   }
 
-  res.json({ success: true, data: student });
+  // ✅ ALIGN DATA: Merge userId fields and add contactNumber for frontend compatibility
+  const alignedStudent = {
+    ...student,
+    firstName: student.firstName || student.userId?.name?.split(' ')[0] || '',
+    lastName: student.lastName || student.userId?.name?.split(' ').slice(1).join(' ') || '',
+    email: student.email || student.userId?.email || '',
+    phone: student.phone || student.userId?.phone || '',
+    contactNumber: student.phone || student.userId?.phone || '',
+    status: student.status || 'active',
+    isActive: student.status === 'active',
+  };
+
+  res.json({ success: true, data: alignedStudent });
 });
 
 exports.updateStudent = asyncHandler(async (req, res) => {
   const student = await Student.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
-  });
+  })
+    .populate('userId', 'name email phone')
+    .populate('class', 'name section')
+    .populate('academicYear', 'year')
+    .lean();
 
   if (!student) {
     return res.status(404).json({ success: false, message: 'Student not found' });
   }
 
-  res.json({ success: true, data: student });
+  // ✅ ALIGN DATA for consistency
+  const alignedStudent = {
+    ...student,
+    firstName: student.firstName || student.userId?.name?.split(' ')[0] || '',
+    lastName: student.lastName || student.userId?.name?.split(' ').slice(1).join(' ') || '',
+    email: student.email || student.userId?.email || '',
+    phone: student.phone || student.userId?.phone || '',
+    contactNumber: student.phone || student.userId?.phone || '',
+    status: student.status || 'active',
+    isActive: student.status === 'active',
+  };
+
+  res.json({ success: true, data: alignedStudent });
 });
 
 exports.deleteStudent = asyncHandler(async (req, res) => {

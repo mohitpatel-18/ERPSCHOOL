@@ -171,6 +171,11 @@ const feeTemplateSchema = new mongoose.Schema(
       required: true,
     },
 
+    lastDate: {
+      type: Date,
+      required: true,
+    },
+
     /* ================= FEE COMPONENTS ================= */
     components: [feeComponentSchema],
 
@@ -335,7 +340,7 @@ feeTemplateSchema.methods.calculateStudentFee = function(selectedComponents = []
       }
 
       componentBreakdown.push({
-        name: component.name,
+        componentName: component.name, // ✅ Changed from 'name' to 'componentName'
         baseAmount: component.amount,
         taxAmount: component.isTaxable ? (component.amount * component.taxPercentage) / 100 : 0,
         finalAmount: componentAmount,
@@ -382,6 +387,42 @@ feeTemplateSchema.pre('save', function(next) {
     .filter(c => !c.isOptional)
     .reduce((sum, c) => sum + c.amount, 0);
   next();
+});
+
+// ✅ CASCADE DELETE: Delete all related data when template is deleted
+feeTemplateSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+  try {
+    const StudentFee = mongoose.model('StudentFee');
+    const Payment = mongoose.model('Payment');
+    
+    console.log(`🗑️ Deleting FeeTemplate ${this._id} and all related data...`);
+    
+    // Find all student fees related to this template
+    const studentFees = await StudentFee.find({ feeTemplate: this._id });
+    const studentFeeIds = studentFees.map(sf => sf._id);
+    
+    console.log(`   Found ${studentFees.length} student fee records to delete`);
+    
+    // Delete all payments related to these student fees
+    if (studentFeeIds.length > 0) {
+      const deletedPayments = await Payment.deleteMany({ 
+        studentFee: { $in: studentFeeIds } 
+      });
+      console.log(`   ✅ Deleted ${deletedPayments.deletedCount} payment records`);
+      
+      // Delete all student fee records
+      const deletedStudentFees = await StudentFee.deleteMany({ 
+        feeTemplate: this._id 
+      });
+      console.log(`   ✅ Deleted ${deletedStudentFees.deletedCount} student fee records`);
+    }
+    
+    console.log(`   ✅ FeeTemplate ${this._id} and all related data deleted successfully`);
+    next();
+  } catch (error) {
+    console.error('❌ Error in FeeTemplate cascade delete:', error);
+    next(error);
+  }
 });
 
 feeTemplateSchema.set('toJSON', { virtuals: true });

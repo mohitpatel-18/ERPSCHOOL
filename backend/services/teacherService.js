@@ -5,7 +5,6 @@
 const BaseService = require('./BaseService');
 const Teacher = require('../models/Teacher');
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const { generateUsername, generatePassword } = require('../utils/generateCredentials');
 
 class TeacherService extends BaseService {
@@ -23,12 +22,11 @@ class TeacherService extends BaseService {
       // Generate credentials
       const username = generateUsername(firstName, lastName);
       const tempPassword = generatePassword();
-      const hashedPassword = await bcrypt.hash(tempPassword, 12);
 
       // Create user account
       const user = await User.create({
         username,
-        password: hashedPassword,
+        password: tempPassword, // User model's pre-save hook will hash it
         email,
         role: 'teacher',
         isActive: true

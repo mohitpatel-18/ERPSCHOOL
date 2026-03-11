@@ -42,4 +42,25 @@ const apiResponse = (req, res, next) => {
   next();
 };
 
+// ✅ Helper functions for use in controllers
+const successResponse = (data = null, message = 'Success', meta = {}) => {
+  return {
+    success: true,
+    message,
+    data,
+    ...meta
+  };
+};
+
+const errorResponse = (message = 'Error', code = 'ERROR', meta = {}) => {
+  return {
+    success: false,
+    message,
+    code,
+    ...meta
+  };
+};
+
 module.exports = apiResponse;
+module.exports.successResponse = successResponse;
+module.exports.errorResponse = errorResponse;

@@ -212,22 +212,42 @@ exports.getStudentFees = async (req, res, next) => {
     // Get student fee record
     const studentFee = await StudentFee.findOne({
       student: student._id,
+      isActive: true,
     })
-      .populate('feeTemplate', 'templateName totalAnnualFee')
+      .populate('feeTemplate', 'templateName totalAnnualFee components')
       .populate('class', 'name section')
-      .sort({ createdAt: -1 });
+      .populate('academicYear', 'year name')
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!studentFee) {
       return res.status(200).json({
         success: true,
-        data: null,
+        data: {
+          studentFee: null,
+          payments: [],
+        },
         message: "No fee assigned yet",
       });
     }
 
+    // Get payment history for this student fee
+    const Payment = require('../models/Payment');
+    const payments = await Payment.find({
+      student: student._id,
+      studentFee: studentFee._id,
+      isDeleted: false,
+    })
+      .select('paymentDate amount paymentMode status receiptNumber')
+      .sort({ paymentDate: -1 })
+      .lean();
+
     res.status(200).json({
       success: true,
-      data: studentFee,
+      data: {
+        studentFee,
+        payments,
+      },
     });
   } catch (error) {
     next(error);
@@ -373,6 +393,64 @@ exports.submitHomework = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: submission,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* ================= STUDENT CASH PAYMENT REQUEST ================= */
+exports.submitCashPayment = async (req, res, next) => {
+  try {
+    const Payment = require('../models/Payment');
+    const FeeEngineService = require('../services/feeEngineService');
+    
+    const student = await Student.findOne({ userId: req.user.id });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found",
+      });
+    }
+
+    const { studentFeeId, amount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount',
+      });
+    }
+
+    // Verify student fee belongs to this student
+    const studentFee = await StudentFee.findOne({
+      _id: studentFeeId,
+      student: student._id,
+    });
+
+    if (!studentFee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student fee record not found',
+      });
+    }
+
+    // Create cash payment request with Pending status
+    const result = await FeeEngineService.processPayment(studentFeeId, {
+      amount,
+      paymentMode: 'Cash',
+      paymentType: 'Offline',
+      paymentDate: new Date(),
+      collectedBy: req.user.id, // Student's user ID
+      collectorName: `${student.firstName} ${student.lastName} (Self)`,
+      remarks: 'Cash payment request by student - Pending admin approval',
+    });
+
+    res.status(201).json({
+      success: true,
+      data: result,
+      message: 'Cash payment request submitted successfully. Waiting for admin approval.',
     });
   } catch (error) {
     next(error);

@@ -11,7 +11,11 @@ export const studentService = {
 
   /* ================= PROFILE ================= */
   getProfile: () =>
-    api.get('/student/profile'),
+    api.get('/profile/student'),
+  updateProfile: (data) => 
+    api.put('/profile/student', data),
+  getMyStats: () => 
+    api.get('/profile/student/stats'),
 
   /* ================= FEES ================= */
   getFees: () =>

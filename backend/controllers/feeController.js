@@ -100,21 +100,50 @@ exports.deleteFeeTemplate = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if assigned to any students
+  // ✅ Count assigned students and payments before deletion
   const assignedCount = await StudentFee.countDocuments({ feeTemplate: req.params.id });
-  
-  if (assignedCount > 0) {
-    return res.status(400).json({
-      success: false,
-      message: `Cannot delete. Template is assigned to ${assignedCount} students. Please deactivate instead.`,
+  const paymentCount = assignedCount > 0 
+    ? await Payment.countDocuments({ 
+        studentFee: { $in: (await StudentFee.find({ feeTemplate: req.params.id }).select('_id')).map(sf => sf._id) }
+      })
+    : 0;
+
+  // ✅ OPTION 1: If template is inactive, allow deletion with cascade
+  if (!template.isActive) {
+    await template.deleteOne(); // This triggers cascade delete hook
+    
+    return res.json({
+      success: true,
+      message: `Template deleted successfully! Also removed ${assignedCount} student fee records and ${paymentCount} payment records.`,
+      deletedData: {
+        studentFees: assignedCount,
+        payments: paymentCount
+      }
     });
   }
 
-  await template.deleteOne();
+  // ✅ OPTION 2: If template is active, check if assigned to any active students
+  const activeAssignedCount = await StudentFee.countDocuments({ 
+    feeTemplate: req.params.id,
+    isActive: true
+  });
+  
+  if (activeAssignedCount > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot delete active template. It is assigned to ${activeAssignedCount} students. Please deactivate it first, then you can delete it.`,
+    });
+  }
+
+  await template.deleteOne(); // This triggers cascade delete hook
 
   res.json({
     success: true,
-    message: 'Fee template deleted successfully',
+    message: `Template deleted successfully! Also removed ${assignedCount} student fee records and ${paymentCount} payment records.`,
+    deletedData: {
+      studentFees: assignedCount,
+      payments: paymentCount
+    }
   });
 });
 
@@ -143,12 +172,31 @@ exports.assignFeeToStudent = asyncHandler(async (req, res) => {
 exports.bulkAssignFee = asyncHandler(async (req, res) => {
   const { studentIds, feeTemplateId, selectedComponents, appliedDiscounts, installmentPlan } = req.body;
 
+  if (!studentIds || studentIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'No students selected',
+    });
+  }
+
+  if (!feeTemplateId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Fee template is required',
+    });
+  }
+
   const results = await FeeEngineService.bulkAssignFee(studentIds, feeTemplateId, {
     selectedComponents,
     appliedDiscounts,
     installmentPlan,
     assignedBy: req.user.id,
   });
+
+  // Log errors for debugging
+  if (results.failed.length > 0) {
+    console.log('❌ Fee Assignment Failures:', JSON.stringify(results.failed, null, 2));
+  }
 
   res.json({
     success: true,
@@ -161,8 +209,16 @@ exports.bulkAssignFee = asyncHandler(async (req, res) => {
 exports.assignFeeToClass = asyncHandler(async (req, res) => {
   const { classId, feeTemplateId, selectedComponents, appliedDiscounts, installmentPlan } = req.body;
 
-  const students = await Student.find({ class: classId, isActive: true });
+  // ✅ Use 'status' field instead of 'isActive'
+  const students = await Student.find({ class: classId, status: 'active' });
   const studentIds = students.map(s => s._id);
+
+  if (studentIds.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'No active students found in this class',
+    });
+  }
 
   const results = await FeeEngineService.bulkAssignFee(studentIds, feeTemplateId, {
     selectedComponents,
@@ -285,6 +341,31 @@ exports.updateStudentFee = asyncHandler(async (req, res) => {
 exports.recordPayment = asyncHandler(async (req, res) => {
   const { studentFeeId, amount, paymentMode, paymentDate, remarks, ...otherDetails } = req.body;
 
+  // ✅ Validation: Check amount
+  if (!amount || amount <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment amount must be greater than 0',
+    });
+  }
+
+  // ✅ Validation: Check if amount exceeds balance
+  const studentFee = await StudentFee.findById(studentFeeId);
+  if (!studentFee) {
+    return res.status(404).json({
+      success: false,
+      message: 'Student fee record not found',
+    });
+  }
+
+  const totalDue = studentFee.balance + studentFee.totalLateFee;
+  if (amount > totalDue) {
+    return res.status(400).json({
+      success: false,
+      message: `Payment amount (₹${amount}) exceeds total due amount (₹${totalDue}). Cannot accept overpayment.`,
+    });
+  }
+
   const result = await FeeEngineService.processPayment(studentFeeId, {
     amount,
     paymentMode,
@@ -299,7 +380,7 @@ exports.recordPayment = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     data: result,
-    message: 'Payment recorded successfully',
+    message: 'Payment recorded successfully. Awaiting admin approval.',
   });
 });
 
@@ -375,22 +456,43 @@ exports.approvePayment = asyncHandler(async (req, res) => {
     });
   }
 
+  if (payment.approvalStatus === 'Approved') {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment is already approved',
+    });
+  }
+
+  if (payment.approvalStatus === 'Rejected') {
+    return res.status(400).json({
+      success: false,
+      message: 'Cannot approve a rejected payment',
+    });
+  }
+
+  // ✅ Update approval status (this will trigger the post-save hook to update StudentFee)
   payment.approvalStatus = 'Approved';
   payment.approvedBy = req.user.id;
   payment.approvalDate = new Date();
-  await payment.save();
+  await payment.save(); // This triggers the hook that updates StudentFee
+
+  // Fetch updated student fee data
+  const studentFee = await StudentFee.findById(payment.studentFee)
+    .populate('student', 'firstName lastName rollNumber');
 
   res.json({
     success: true,
-    data: payment,
+    data: {
+      payment,
+      studentFee,
+    },
     message: 'Payment approved successfully',
   });
 });
 
 // Reject Payment
 exports.rejectPayment = asyncHandler(async (req, res) => {
-  const { reason } = req.body;
-  const payment = await Payment.findById(req.params.id);
+  const payment = await Payment.findById(req.params.id).populate('studentFee');
 
   if (!payment) {
     return res.status(404).json({
@@ -399,16 +501,86 @@ exports.rejectPayment = asyncHandler(async (req, res) => {
     });
   }
 
+  if (payment.approvalStatus === 'Approved') {
+    return res.status(400).json({
+      success: false,
+      message: 'Cannot reject an approved payment. Please refund instead.',
+    });
+  }
+
+  if (payment.approvalStatus === 'Rejected') {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment is already rejected',
+    });
+  }
+
+  const { reason } = req.body;
+
+  // ✅ CRITICAL FIX: If the payment was somehow counted in StudentFee, revert it
+  const studentFee = await StudentFee.findById(payment.studentFee);
+  
+  if (studentFee) {
+    // Check if this payment was counted in installments
+    let wasUpdated = false;
+    
+    studentFee.installments.forEach(installment => {
+      if (installment.paymentIds && installment.paymentIds.length > 0) {
+        const paymentIndex = installment.paymentIds.findIndex(
+          pid => pid.toString() === payment._id.toString()
+        );
+        
+        if (paymentIndex !== -1) {
+          wasUpdated = true;
+          
+          // Find the allocation for this installment
+          const allocation = payment.installmentAllocations?.find(
+            a => a.installmentNumber === installment.installmentNumber
+          );
+          
+          if (allocation) {
+            // Revert the paid amount
+            installment.paidAmount = Math.max(0, installment.paidAmount - allocation.allocatedAmount);
+            
+            // Remove payment ID
+            installment.paymentIds.splice(paymentIndex, 1);
+            
+            // Reset paidOn if no payments left
+            if (installment.paymentIds.length === 0 && installment.paidAmount === 0) {
+              installment.paidOn = undefined;
+            }
+          }
+        }
+      }
+    });
+    
+    // Revert totalPaid if payment was counted
+    if (wasUpdated) {
+      studentFee.totalPaid = Math.max(0, studentFee.totalPaid - payment.amount);
+    }
+    
+    await studentFee.save();
+  }
+
+  // Update payment status
   payment.approvalStatus = 'Rejected';
+  payment.status = 'Cancelled'; // Mark as cancelled
   payment.rejectionReason = reason;
-  payment.approvedBy = req.user.id;
-  payment.approvalDate = new Date();
+  payment.rejectedBy = req.user.id;
+  payment.rejectionDate = new Date();
   await payment.save();
+
+  // Fetch updated student fee
+  const updatedStudentFee = await StudentFee.findById(payment.studentFee)
+    .populate('student', 'firstName lastName rollNumber');
 
   res.json({
     success: true,
-    data: payment,
-    message: 'Payment rejected',
+    data: {
+      payment,
+      studentFee: updatedStudentFee,
+    },
+    message: 'Payment rejected successfully',
   });
 });
 

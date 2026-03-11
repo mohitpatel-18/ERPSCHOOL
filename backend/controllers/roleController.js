@@ -18,6 +18,8 @@ const { successResponse, errorResponse } = require('../utils/apiResponse');
  * @access  Private (Admin)
  */
 exports.getAllRoles = asyncHandler(async (req, res) => {
+  console.log('📋 getAllRoles called by user:', req.user?.role);
+  
   const { type, category, status, page = 1, limit = 50 } = req.query;
   
   const filter = {};
@@ -27,24 +29,31 @@ exports.getAllRoles = asyncHandler(async (req, res) => {
   
   const skip = (page - 1) * limit;
   
-  const [roles, total] = await Promise.all([
-    Role.find(filter)
-      .populate('parentRole', 'name displayName')
-      .sort({ level: 1, name: 1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean(),
-    Role.countDocuments(filter)
-  ]);
-  
-  res.json(successResponse(roles, 'Roles retrieved successfully', {
-    pagination: {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      total,
-      pages: Math.ceil(total / limit)
-    }
-  }));
+  try {
+    const [roles, total] = await Promise.all([
+      Role.find(filter)
+        .populate('parentRole', 'name displayName')
+        .sort({ level: 1, name: 1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Role.countDocuments(filter)
+    ]);
+    
+    console.log('✅ Roles found:', total);
+    
+    res.json(successResponse(roles, 'Roles retrieved successfully', {
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }));
+  } catch (error) {
+    console.error('❌ Error in getAllRoles:', error.message);
+    throw error;
+  }
 });
 
 /**

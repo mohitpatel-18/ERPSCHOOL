@@ -417,35 +417,44 @@ paymentSchema.pre('save', async function(next) {
   next();
 });
 
-// After save: update StudentFee balance
+// After save: update StudentFee balance ONLY for approved payments
 paymentSchema.post('save', async function(doc) {
-  if (doc.status === 'Success' && !doc.isRefunded) {
+  // ✅ CRITICAL FIX: Only update StudentFee when payment is approved
+  // Cash payments need admin approval first
+  if (doc.status === 'Success' && doc.approvalStatus === 'Approved' && !doc.isRefunded) {
     const StudentFee = mongoose.model('StudentFee');
     const studentFee = await StudentFee.findById(doc.studentFee);
     
     if (studentFee) {
-      studentFee.totalPaid += doc.totalAmount;
-      studentFee.lastPaymentDate = doc.paymentDate;
+      // Check if this payment was already counted (prevent double counting)
+      const alreadyUpdated = studentFee.installments.some(inst => 
+        inst.paymentIds && inst.paymentIds.some(pid => pid.toString() === doc._id.toString())
+      );
       
-      // Update installment allocations
-      if (doc.installmentAllocations && doc.installmentAllocations.length > 0) {
-        doc.installmentAllocations.forEach(allocation => {
-          const installment = studentFee.installments.find(
-            i => i.installmentNumber === allocation.installmentNumber
-          );
-          
-          if (installment) {
-            installment.paidAmount += allocation.allocatedAmount;
-            installment.paymentIds.push(doc._id);
+      if (!alreadyUpdated) {
+        studentFee.totalPaid += doc.amount; // Use amount, not totalAmount
+        studentFee.lastPaymentDate = doc.paymentDate;
+        
+        // Update installment allocations
+        if (doc.installmentAllocations && doc.installmentAllocations.length > 0) {
+          doc.installmentAllocations.forEach(allocation => {
+            const installment = studentFee.installments.find(
+              i => i.installmentNumber === allocation.installmentNumber
+            );
             
-            if (allocation.allocatedAmount > 0) {
-              installment.paidOn = doc.paymentDate;
+            if (installment) {
+              installment.paidAmount += allocation.allocatedAmount;
+              installment.paymentIds.push(doc._id);
+              
+              if (allocation.allocatedAmount > 0) {
+                installment.paidOn = doc.paymentDate;
+              }
             }
-          }
-        });
+          });
+        }
+        
+        await studentFee.save();
       }
-      
-      await studentFee.save();
     }
   }
 });

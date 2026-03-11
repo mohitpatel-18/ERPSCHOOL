@@ -5,7 +5,9 @@ export const teacherService = {
   getDashboard: () => api.get('/teacher/dashboard'),
 
   /* ================= PROFILE ================= */
-  getProfile: () => api.get('/teacher/profile'),
+  getProfile: () => api.get('/profile/teacher'),
+  updateProfile: (data) => api.put('/profile/teacher', data),
+  getMyStats: () => api.get('/profile/teacher/stats'),
 
   /* ================= STUDENTS ================= */
   addStudent: data => api.post('/teacher/students', data),

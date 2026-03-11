@@ -64,6 +64,7 @@ import FeeDashboard from "./components/admin/fee/FeeDashboard";
 import FeeTemplateManager from "./components/admin/fee/FeeTemplateManager";
 import FeeAssignment from "./components/admin/fee/FeeAssignment";
 import PaymentRecording from "./components/admin/fee/PaymentRecording";
+import PaymentApproval from "./components/admin/fee/PaymentApproval";
 import FeeReports from "./components/admin/fee/FeeReports";
 import StudentFeePortal from "./components/student/FeePortal";
 
@@ -103,6 +104,7 @@ function App() {
             <Route path="fees/templates" element={<FeeTemplateManager />} />
             <Route path="fees/assign" element={<FeeAssignment />} />
             <Route path="fees/payments/record" element={<PaymentRecording />} />
+            <Route path="fees/payments/approve" element={<PaymentApproval />} />
             <Route path="fees/reports" element={<FeeReports />} />
             
             <Route path="permissions" element={<PermissionManager />} />

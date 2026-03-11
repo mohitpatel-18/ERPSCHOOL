@@ -149,6 +149,10 @@ const server = app.listen(PORT, async () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🛡️  Security: helmet + rate limiting enabled`);
   await seedAdmin();
+  
+  // Seed permissions on first run
+  const seedPermissions = require('./utils/seeders/permissionSeeder');
+  await seedPermissions();
 });
 
 // ================= GLOBAL ERROR HANDLING =================

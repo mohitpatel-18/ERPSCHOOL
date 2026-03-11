@@ -96,7 +96,12 @@ class FeeEngineService {
         const studentFee = await this.assignFeeToStudent(studentId, feeTemplateId, options);
         results.success.push({ studentId, studentFee });
       } catch (error) {
-        results.failed.push({ studentId, error: error.message });
+        console.error(`❌ Failed to assign fee to student ${studentId}:`, error.message);
+        results.failed.push({ 
+          studentId, 
+          error: error.message,
+          stack: error.stack 
+        });
       }
     }
 
@@ -175,14 +180,25 @@ class FeeEngineService {
       );
 
       // Create payment record
+      // ✅ Auto-approve online payments, keep offline as Pending
+      const isOnlinePayment = paymentData.paymentType === 'Online';
+      
+      // ✅ Calculate totalAmount
+      const totalAmount = paymentData.amount + allocations.totalLateFee - (paymentData.discountAmount || 0);
+      
+      // ✅ Generate unique receipt number
+      const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      
       const payment = new Payment({
         student: studentFee.student._id,
         studentFee: studentFeeId,
         academicYear: studentFee.academicYear,
+        receiptNumber, // ✅ Required field
         paymentDate: paymentData.paymentDate || new Date(),
         amount: paymentData.amount,
         lateFeeAmount: allocations.totalLateFee,
         discountAmount: paymentData.discountAmount || 0,
+        totalAmount, // ✅ Required field
         paymentMode: paymentData.paymentMode,
         paymentType: paymentData.paymentType || 'Offline',
         installmentAllocations: allocations.allocations,
@@ -205,7 +221,9 @@ class FeeEngineService {
         upiId: paymentData.upiId,
         
         status: 'Success',
-        approvalStatus: paymentData.paymentType === 'Online' ? 'Approved' : 'Pending',
+        approvalStatus: isOnlinePayment ? 'Approved' : 'Pending', // ✅ Auto-approve online
+        approvedBy: isOnlinePayment ? null : undefined,
+        approvalDate: isOnlinePayment ? new Date() : undefined,
       });
 
       await payment.save();

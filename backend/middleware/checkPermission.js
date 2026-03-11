@@ -16,8 +16,11 @@ const checkPermission = (module, action, options = {}) => {
     try {
       const userRole = req.user.role;
       
+      console.log(`🔒 checkPermission: ${module}.${action} for role: ${userRole}`);
+      
       // Super admin always has full access
-      if (userRole === 'super_admin') {
+      if (userRole === 'super_admin' || userRole === 'admin') {
+        console.log(`✅ ${userRole} bypassed permission check`);
         return next();
       }
       
@@ -33,7 +36,17 @@ const checkPermission = (module, action, options = {}) => {
       // Check permission with context
       const hasPermission = await Permission.hasPermission(userRole, module, action, context);
       
+      // If no permissions are configured yet, allow admin roles to proceed
       if (!hasPermission) {
+        // Check if any permissions exist in the database
+        const permCount = await Permission.countDocuments();
+        console.log(`📊 Permission count in DB: ${permCount}`);
+        
+        if (permCount === 0 && (userRole === 'admin' || userRole === 'super_admin')) {
+          console.warn(`⚠️ No permissions configured yet. Allowing ${userRole} to proceed.`);
+          return next();
+        }
+        
         return res.status(403).json(errorResponse(
           `Access Denied: You don't have permission to ${action} ${module}`,
           'PERMISSION_DENIED',
@@ -54,6 +67,8 @@ const checkPermission = (module, action, options = {}) => {
       
       next();
     } catch (error) {
+      console.error('❌ Permission check error:', error);
+      console.error('❌ Stack trace:', error.stack);
       next(error);
     }
   };
@@ -68,7 +83,7 @@ const checkAnyPermission = (permissionPairs) => {
     try {
       const userRole = req.user.role;
       
-      if (userRole === 'super_admin') {
+      if (userRole === 'super_admin' || userRole === 'admin') {
         return next();
       }
       
@@ -84,6 +99,13 @@ const checkAnyPermission = (permissionPairs) => {
       const hasAnyPermission = checks.some(result => result === true);
       
       if (!hasAnyPermission) {
+        // Check if any permissions exist in the database
+        const permCount = await Permission.countDocuments();
+        if (permCount === 0 && (userRole === 'admin' || userRole === 'super_admin')) {
+          console.warn(`⚠️ No permissions configured yet. Allowing ${userRole} to proceed.`);
+          return next();
+        }
+        
         return res.status(403).json(errorResponse(
           'Access Denied: You don\'t have any of the required permissions',
           'PERMISSION_DENIED'
@@ -92,6 +114,7 @@ const checkAnyPermission = (permissionPairs) => {
       
       next();
     } catch (error) {
+      console.error('❌ checkAnyPermission error:', error);
       next(error);
     }
   };
@@ -106,7 +129,7 @@ const checkAllPermissions = (permissionPairs) => {
     try {
       const userRole = req.user.role;
       
-      if (userRole === 'super_admin') {
+      if (userRole === 'super_admin' || userRole === 'admin') {
         return next();
       }
       
@@ -122,6 +145,13 @@ const checkAllPermissions = (permissionPairs) => {
       const hasAllPermissions = checks.every(result => result === true);
       
       if (!hasAllPermissions) {
+        // Check if any permissions exist in the database
+        const permCount = await Permission.countDocuments();
+        if (permCount === 0 && (userRole === 'admin' || userRole === 'super_admin')) {
+          console.warn(`⚠️ No permissions configured yet. Allowing ${userRole} to proceed.`);
+          return next();
+        }
+        
         return res.status(403).json(errorResponse(
           'Access Denied: You don\'t have all required permissions',
           'PERMISSION_DENIED'
@@ -130,6 +160,7 @@ const checkAllPermissions = (permissionPairs) => {
       
       next();
     } catch (error) {
+      console.error('❌ checkAllPermissions error:', error);
       next(error);
     }
   };
@@ -326,13 +357,27 @@ const checkCanDelegate = async (req, res, next) => {
   try {
     const userRole = req.user.role;
     
-    if (userRole === 'super_admin') {
+    if (userRole === 'super_admin' || userRole === 'admin') {
       return next();
     }
     
     const role = await Role.findOne({ name: userRole });
     
-    if (!role || !role.restrictions?.canModifyRoles) {
+    // If no roles exist yet, allow admin users
+    if (!role) {
+      const roleCount = await Role.countDocuments();
+      if (roleCount === 0 && (userRole === 'admin' || userRole === 'super_admin')) {
+        console.warn(`⚠️ No roles configured yet. Allowing ${userRole} to delegate.`);
+        return next();
+      }
+      
+      return res.status(403).json(errorResponse(
+        'Access Denied: You cannot delegate permissions',
+        'DELEGATION_NOT_ALLOWED'
+      ));
+    }
+    
+    if (!role.restrictions?.canModifyRoles) {
       return res.status(403).json(errorResponse(
         'Access Denied: You cannot delegate permissions',
         'DELEGATION_NOT_ALLOWED'
@@ -341,6 +386,7 @@ const checkCanDelegate = async (req, res, next) => {
     
     next();
   } catch (error) {
+    console.error('❌ checkCanDelegate error:', error);
     next(error);
   }
 };

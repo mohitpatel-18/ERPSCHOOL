@@ -319,6 +319,15 @@ studentFeeSchema.virtual('daysOverdue').get(function() {
 studentFeeSchema.methods.updateBalance = function() {
   this.balance = this.netFeeAmount + this.totalLateFee - this.totalPaid - this.concessionAmount;
   
+  // ✅ CRITICAL FIX: Prevent negative balance (overpayment protection)
+  // Balance should never go below zero
+  if (this.balance < 0) {
+    console.warn(`⚠️ Negative balance detected for StudentFee ${this._id}: ${this.balance}`);
+    console.warn(`Net Fee: ${this.netFeeAmount}, Late Fee: ${this.totalLateFee}, Total Paid: ${this.totalPaid}, Concession: ${this.concessionAmount}`);
+    // Set to 0 to prevent negative balance
+    this.balance = 0;
+  }
+  
   if (this.balance <= 0) {
     this.overallStatus = 'Paid';
   } else if (this.totalPaid > 0) {
@@ -398,6 +407,35 @@ studentFeeSchema.methods.updateNextDue = function() {
     this.nextDueDate = null;
     this.nextDueAmount = 0;
   }
+};
+
+/* ================= INSTANCE METHODS ================= */
+
+// Recalculate fee status based on approved payments only
+studentFeeSchema.methods.recalculateFromApprovedPayments = async function() {
+  const Payment = mongoose.model('Payment');
+  
+  // Get all approved payments for this student fee
+  const approvedPayments = await Payment.find({
+    studentFee: this._id,
+    approvalStatus: 'Approved',
+    isDeleted: false
+  });
+
+  // Reset paid amounts
+  this.totalPaid = 0;
+  
+  // Recalculate based on approved payments
+  approvedPayments.forEach(payment => {
+    this.totalPaid += payment.amount || 0;
+  });
+
+  // Update balance and status
+  this.updateBalance();
+  this.updateNextDue();
+  
+  await this.save();
+  return this;
 };
 
 /* ================= STATIC METHODS ================= */
