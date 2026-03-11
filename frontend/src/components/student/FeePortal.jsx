@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import api from '../../services/api';
 import { studentService } from '../../services/studentService';
 import toast from 'react-hot-toast';
 import {
@@ -30,14 +29,11 @@ const FeePortalNew = () => {
   const fetchFeeData = async () => {
     setLoading(true);
     try {
-      const [feeRes, paymentsRes] = await Promise.all([
-        studentService.getFees(),
-        api.get('/student/payments').catch(() => ({ data: { data: [] } }))
-      ]);
+      const feeRes = await studentService.getFees();
 
       console.log('💰 Fee Data:', feeRes.data);
       setFeeData(feeRes.data.data);
-      setPayments(paymentsRes.data.data || []);
+      setPayments(feeRes.data.data?.payments || []);
     } catch (error) {
       console.error('Failed to load fee data:', error);
       toast.error('Failed to load fee information');
