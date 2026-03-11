@@ -16,6 +16,7 @@ const FeeAssignment = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [assignmentMode, setAssignmentMode] = useState('bulk'); // bulk, class, single
+  const [overrideExisting, setOverrideExisting] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -97,17 +98,24 @@ const FeeAssignment = () => {
           studentIds: selectedStudents,
           feeTemplateId: selectedTemplate,
           installmentPlan,
+          override: overrideExisting,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { success, failed } = response.data.data;
+      const { success, failed, skipped } = response.data.data;
       
       toast.success(
         `Fee assigned to ${success.length} students successfully! ${
           failed.length > 0 ? `${failed.length} failed.` : ''
+        } ${
+          skipped?.length > 0 ? `${skipped.length} skipped (already assigned).` : ''
         }`
       );
+
+      if (failed?.length > 0) {
+        toast.error(`Failed: ${failed[0].error || 'Unknown error'}`);
+      }
 
       setSelectedStudents([]);
       fetchStudents();
@@ -138,17 +146,24 @@ const FeeAssignment = () => {
           classId: selectedClass,
           feeTemplateId: selectedTemplate,
           installmentPlan,
+          override: overrideExisting,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      const { success, failed } = response.data.data;
+      const { success, failed, skipped } = response.data.data;
       
       toast.success(
         `Fee assigned to ${success.length} students! ${
           failed.length > 0 ? `${failed.length} failed.` : ''
+        } ${
+          skipped?.length > 0 ? `${skipped.length} skipped (already assigned).` : ''
         }`
       );
+
+      if (failed?.length > 0) {
+        toast.error(`Failed: ${failed[0].error || 'Unknown error'}`);
+      }
 
       fetchStudents();
     } catch (error) {
@@ -282,6 +297,14 @@ const FeeAssignment = () => {
             <p className="text-sm text-gray-700">
               <strong>Selected Plan:</strong> {installmentPlan}
             </p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={overrideExisting}
+                onChange={(e) => setOverrideExisting(e.target.checked)}
+              />
+              Re-assign if fee already exists for academic year
+            </label>
           </div>
         </div>
       </div>

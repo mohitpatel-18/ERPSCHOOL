@@ -170,7 +170,14 @@ exports.assignFeeToStudent = asyncHandler(async (req, res) => {
 
 // Bulk Assign Fee
 exports.bulkAssignFee = asyncHandler(async (req, res) => {
-  const { studentIds, feeTemplateId, selectedComponents, appliedDiscounts, installmentPlan } = req.body;
+  const {
+    studentIds,
+    feeTemplateId,
+    selectedComponents,
+    appliedDiscounts,
+    installmentPlan,
+    override,
+  } = req.body;
 
   if (!studentIds || studentIds.length === 0) {
     return res.status(400).json({
@@ -190,6 +197,7 @@ exports.bulkAssignFee = asyncHandler(async (req, res) => {
     selectedComponents,
     appliedDiscounts,
     installmentPlan,
+    override: Boolean(override),
     assignedBy: req.user.id,
   });
 
@@ -201,13 +209,20 @@ exports.bulkAssignFee = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: results,
-    message: `Fee assigned to ${results.success.length} students. ${results.failed.length} failed.`,
+    message: `Fee assigned to ${results.success.length} students. ${results.failed.length} failed.${results.skipped.length ? ` ${results.skipped.length} skipped.` : ''}`,
   });
 });
 
 // Assign Fee to Entire Class
 exports.assignFeeToClass = asyncHandler(async (req, res) => {
-  const { classId, feeTemplateId, selectedComponents, appliedDiscounts, installmentPlan } = req.body;
+  const {
+    classId,
+    feeTemplateId,
+    selectedComponents,
+    appliedDiscounts,
+    installmentPlan,
+    override,
+  } = req.body;
 
   // ✅ Use 'status' field instead of 'isActive'
   const students = await Student.find({ class: classId, status: 'active' });
@@ -224,13 +239,14 @@ exports.assignFeeToClass = asyncHandler(async (req, res) => {
     selectedComponents,
     appliedDiscounts,
     installmentPlan,
+    override: Boolean(override),
     assignedBy: req.user.id,
   });
 
   res.json({
     success: true,
     data: results,
-    message: `Fee assigned to ${results.success.length} students in class. ${results.failed.length} failed.`,
+    message: `Fee assigned to ${results.success.length} students in class. ${results.failed.length} failed.${results.skipped.length ? ` ${results.skipped.length} skipped.` : ''}`,
   });
 });
 

@@ -10,10 +10,26 @@ class FeeEngineService {
   static async assignFeeToStudent(studentId, feeTemplateId, options = {}) {
     try {
       const student = await Student.findById(studentId).populate('class');
-      const template = await FeeTemplate.findById(feeTemplateId);
-      
-      if (!student || !template) {
-        throw new Error('Student or Fee Template not found');
+      const template = await FeeTemplate.findById(feeTemplateId).populate('class');
+
+      if (!student) {
+        throw new Error('Student not found');
+      }
+
+      if (!template) {
+        throw new Error('Fee template not found');
+      }
+
+      if (!template.isActive) {
+        throw new Error('Fee template is inactive');
+      }
+
+      if (student.status !== 'active') {
+        throw new Error('Student is not active');
+      }
+
+      if (String(student.class?._id || student.class) !== String(template.class?._id || template.class)) {
+        throw new Error('Student class does not match fee template class');
       }
 
       // Check if fee already assigned for this academic year
@@ -41,8 +57,8 @@ class FeeEngineService {
         new Date()
       );
 
-      // Create StudentFee record
-      const studentFee = new StudentFee({
+      // Create or update StudentFee record
+      const studentFeePayload = {
         student: studentId,
         academicYear: template.academicYear,
         class: student.class._id,
@@ -56,27 +72,38 @@ class FeeEngineService {
         balance: feeCalculation.netFee,
         appliedDiscounts: appliedDiscounts.map(d => {
           const discount = template.discountRules.id(d);
+          if (!discount) return null;
+
           return {
             discountName: discount.name,
             discountType: discount.type,
-            amount: discount.discountType === 'Percentage' 
-              ? (feeCalculation.totalFee * discount.value) / 100 
+            amount: discount.discountType === 'Percentage'
+              ? (feeCalculation.totalFee * discount.value) / 100
               : discount.value,
             appliedOn: new Date(),
             appliedBy: options.assignedBy,
           };
-        }),
+        }).filter(Boolean),
         assignedBy: options.assignedBy,
         isTransportIncluded: selectedComponents.includes('Transport Fee'),
         isHostelIncluded: selectedComponents.includes('Hostel Fee'),
         specialNotes: options.notes,
-      });
+      };
 
-      await studentFee.save();
+      let studentFee;
+      if (existing && options.override) {
+        studentFee = await StudentFee.findByIdAndUpdate(existing._id, studentFeePayload, {
+          new: true,
+          runValidators: true,
+        });
+      } else {
+        studentFee = new StudentFee(studentFeePayload);
+        await studentFee.save();
 
-      // Update template assigned count
-      template.assignedStudentsCount += 1;
-      await template.save();
+        // Update template assigned count only for fresh assignment
+        template.assignedStudentsCount += 1;
+        await template.save();
+      }
 
       return studentFee;
     } catch (error) {
@@ -89,6 +116,13 @@ class FeeEngineService {
     const results = {
       success: [],
       failed: [],
+      skipped: [],
+      summary: {
+        totalRequested: studentIds.length,
+        successful: 0,
+        failed: 0,
+        skipped: 0,
+      },
     };
 
     for (const studentId of studentIds) {
@@ -96,14 +130,22 @@ class FeeEngineService {
         const studentFee = await this.assignFeeToStudent(studentId, feeTemplateId, options);
         results.success.push({ studentId, studentFee });
       } catch (error) {
+        if (error.message === 'Fee already assigned for this academic year') {
+          results.skipped.push({ studentId, reason: error.message });
+          continue;
+        }
+
         console.error(`❌ Failed to assign fee to student ${studentId}:`, error.message);
-        results.failed.push({ 
-          studentId, 
+        results.failed.push({
+          studentId,
           error: error.message,
-          stack: error.stack 
         });
       }
     }
+
+    results.summary.successful = results.success.length;
+    results.summary.failed = results.failed.length;
+    results.summary.skipped = results.skipped.length;
 
     return results;
   }
