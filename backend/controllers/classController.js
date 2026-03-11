@@ -49,6 +49,7 @@ exports.getAllClasses = async (req, res, next) => {
           select: 'name email',
         },
       })
+      .populate('academicYear', 'name isCurrent')
       .sort({ name: 1, section: 1 });
 
     res.status(200).json({

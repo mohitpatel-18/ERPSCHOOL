@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { FaPlus, FaEdit, FaTrash, FaEye, FaCheckCircle } from 'react-icons/fa';
+import { FaPlus, FaCheckCircle } from 'react-icons/fa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -12,6 +12,7 @@ const ExamManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedClassSession, setSelectedClassSession] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -55,11 +56,18 @@ const ExamManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user'));
+      const selectedClass = classes.find((cls) => cls._id === formData.class);
+      const academicYearId = selectedClass?.academicYear?._id || selectedClass?.academicYear;
+
+      if (!academicYearId) {
+        toast.error('Selected class is not linked to an academic session');
+        setLoading(false);
+        return;
+      }
 
       const payload = {
         ...formData,
-        academicYear: '6766fbba123456789abcdef0', // Get from active academic year
+        academicYear: academicYearId,
       };
 
       if (selectedExam) {
@@ -99,6 +107,14 @@ const ExamManagement = () => {
     }
   };
 
+  const handleClassChange = (classId) => {
+    const selectedClass = classes.find((cls) => cls._id === classId);
+    const sessionName = selectedClass?.academicYear?.name || '';
+
+    setSelectedClassSession(sessionName);
+    setFormData((prev) => ({ ...prev, class: classId }));
+  };
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -112,6 +128,7 @@ const ExamManagement = () => {
       syllabus: '',
       instructions: '',
     });
+    setSelectedClassSession('');
     setSelectedExam(null);
   };
 
@@ -244,7 +261,7 @@ const ExamManagement = () => {
                   <label className="block text-sm font-semibold mb-2">Class *</label>
                   <select
                     value={formData.class}
-                    onChange={(e) => setFormData({ ...formData, class: e.target.value })}
+                    onChange={(e) => handleClassChange(e.target.value)}
                     className="w-full border rounded-lg px-4 py-2"
                     required
                   >
@@ -255,6 +272,16 @@ const ExamManagement = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Academic Session</label>
+                  <input
+                    type="text"
+                    value={selectedClassSession || 'Select class to auto-fill session'}
+                    className="w-full border rounded-lg px-4 py-2 bg-gray-50 text-gray-600"
+                    disabled
+                  />
                 </div>
 
                 <div>
